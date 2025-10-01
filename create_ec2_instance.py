@@ -29,7 +29,8 @@ def lambda_handler(event, context):
                 'DeviceName': '/dev/sda1',
                 'Ebs': {
                     'DeleteOnTermination': True,
-                    'VolumeSize': 15
+                    # The minimum volume size is 6Gb, approximately
+                    'VolumeSize': 10
                 }
             },
         ],
