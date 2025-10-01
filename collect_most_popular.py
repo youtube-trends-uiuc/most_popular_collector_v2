@@ -42,7 +42,9 @@ def get_youtube_client(developer_key):
     return youtube
 
 
-def get_response_from_youtube(developer_key, response_type, request_params=None, youtube=None):
+def get_response_from_youtube(response_type, request_params, youtube=None, developer_key=None):
+    if developer_key is None:
+        developer_key = read_developer_key()
     if youtube is None:
         youtube = get_youtube_client(developer_key=developer_key)
     no_response = True
@@ -77,7 +79,12 @@ def get_response_from_youtube(developer_key, response_type, request_params=None,
         except HttpError as e:
             if "403" in str(e):
                 logging.info(f"403 - Quota Exceeded. Credential: {developer_key}")
-                raise
+                emergency_developer_key = read_developer_key(emergency=True)
+                if emergency_developer_key != developer_key:
+                    developer_key = emergency_developer_key
+                    youtube = get_youtube_client(developer_key=developer_key)
+                else:
+                    raise
             elif "503" in str(e):
                 logging.info("503 - Service unavailable")
                 service_unavailable = service_unavailable + 1
@@ -102,7 +109,7 @@ def get_response_from_youtube(developer_key, response_type, request_params=None,
                 time.sleep(WAIT_WHEN_UNKNOWN_ERROR)
             else:
                 raise
-    return response, youtube
+    return response, youtube, developer_key
 
 
 def get_period():
@@ -124,19 +131,25 @@ def add_dict_to_file(file_handler, record, retrieved_at, request_params=None):
         record['metadata']['request_params'] = request_params
     file_handler.write(json.dumps(record) + '\n')
 
-def collect_most_popular():
+
+def read_developer_key(emergency=False):
     period = get_period()
-    # read credentials
     s3 = boto3.resource('s3')
-    content_object = s3.Object('youtube-trends-uiuc-admin-v2', 'credentials.json')
+    if emergency:
+        content_object = s3.Object('youtube-trends-uiuc-admin-v2', 'credentials_emergency.json')
+    else:
+        content_object = s3.Object('youtube-trends-uiuc-admin-v2', 'credentials.json')
     file_content = content_object.get()['Body'].read().decode('utf-8')
     credentials = json.loads(file_content)
+    return credentials[period]
 
+
+def collect_most_popular():
     with open('./backup.json', 'w') as backup_json:
         retrieved_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S.%f") + "000Z"
         request_params = {'part': 'snippet'}
-        regions, youtube = get_response_from_youtube(credentials[period], "regions",
-                                                     request_params=request_params)
+        regions, youtube, developer_key = get_response_from_youtube(response_type="regions",
+                                                                    request_params=request_params)
         add_dict_to_file(backup_json, regions, retrieved_at, request_params=request_params)
 
         with open('./regions.json', 'w') as regions_json:
@@ -154,8 +167,10 @@ def collect_most_popular():
                         'part': 'snippet',
                         'regionCode': region_code
                     }
-                    categories, youtube = get_response_from_youtube(credentials[period], "categories",
-                                                                    request_params=request_params, youtube=youtube)
+                    categories, youtube, developer_key = get_response_from_youtube(response_type="categories",
+                                                                                   request_params=request_params,
+                                                                                   youtube=youtube,
+                                                                                   developer_key=developer_key)
                     add_dict_to_file(backup_json, categories, retrieved_at, request_params=request_params)
                     category_ids = ['0', ]
                     for category in categories.get('items', []):
@@ -184,8 +199,10 @@ def collect_most_popular():
                             if next_page_token:
                                 request_params['pageToken'] = next_page_token
                             try:
-                                videos, youtube = get_response_from_youtube(credentials[period], "videos",
-                                                                            request_params=request_params, youtube=youtube)
+                                videos, youtube, developer_key = get_response_from_youtube(response_type="videos",
+                                                                                           request_params=request_params,
+                                                                                           youtube=youtube,
+                                                                                           developer_key=developer_key)
                                 add_dict_to_file(backup_json, videos, retrieved_at, request_params=request_params)
                             except HttpError as e:
                                 if "Requested entity was not found." in str(e):
