@@ -12,19 +12,33 @@ import boto3
 
 WAIT_WHEN_SERVICE_UNAVAILABLE = 30
 WAIT_WHEN_CONNECTION_RESET_BY_PEER = 60
+WAIT_WHEN_UNKNOWN_ERROR = 180
 
 
 def get_youtube_client(developer_key):
-    try:
-        youtube = googleapiclient.discovery.build(serviceName="youtube",
-                                                  version="v3",
-                                                  developerKey=developer_key,
-                                                  cache_discovery=False)
-    except UnknownApiNameOrVersion as e:
-        page = requests.get("https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest")
-        service = json.loads(page.text)
-        youtube = googleapiclient.discovery.build_from_document(service=service,
-                                                                developerKey=developer_key)
+    unknown_error = 0
+    youtube = None
+    no_response = True
+    while no_response:
+        try:
+            youtube = googleapiclient.discovery.build(serviceName="youtube",
+                                                      version="v3",
+                                                      developerKey=developer_key,
+                                                      cache_discovery=False)
+            no_response = False
+        except UnknownApiNameOrVersion as e:
+            page = requests.get("https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest")
+            service = json.loads(page.text)
+            youtube = googleapiclient.discovery.build_from_document(service=service,
+                                                                    developerKey=developer_key)
+        except Exception as e:
+            logging.error(e)
+            unknown_error += 1
+            if unknown_error <= 3:
+                time.sleep(WAIT_WHEN_UNKNOWN_ERROR)
+            else:
+                raise
+
     return youtube
 
 
@@ -32,6 +46,7 @@ def get_response_from_youtube(developer_key, response_type, request_params=None,
     if youtube is None:
         youtube = get_youtube_client(developer_key=developer_key)
     no_response = True
+    unknown_error = 0
     connection_reset_by_peer = 0
     service_unavailable = 0
     response = None
@@ -79,6 +94,13 @@ def get_response_from_youtube(developer_key, response_type, request_params=None,
                     raise
             else:
                 logging.info("Unknown HttpError")
+                raise
+        except Exception as e:
+            logging.error(e)
+            unknown_error += 1
+            if unknown_error <= 3:
+                time.sleep(WAIT_WHEN_UNKNOWN_ERROR)
+            else:
                 raise
     return response, youtube
 

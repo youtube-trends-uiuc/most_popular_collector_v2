@@ -1,5 +1,6 @@
 import boto3
 import datetime
+import os
 
 def get_period():
     period = int(datetime.datetime.now(datetime.UTC).strftime("%H"))
@@ -18,6 +19,12 @@ def upload_most_popular():
     period = get_period()
     s3.Bucket('youtube-trends-uiuc-backup-v2').upload_file("./backup.json.bz2",
                                                       f"creation_date={creation_date}/period={period}/backup.json.bz2")
+
+    max_size = 30 * 1024 * 1024  # 30 Mb... the normal size is ~60 Mb.
+    file_size = os.path.getsize("./most_popular.orc")
+    if file_size < max_size:
+        raise Exception("most_popular.orc is less than 30 megabytes; normal size is ~60 megabytes")
+
     s3.Bucket('youtube-trends-uiuc-v2').upload_file("./most_popular.orc",
                                                     f"most_popular/creation_date={creation_date}/period={period}/most_popular.orc")
     s3.Bucket('youtube-trends-uiuc-v2').upload_file("./categories.orc",

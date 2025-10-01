@@ -15,6 +15,5 @@ java -jar ./orc-tools-2.2.0-uber.jar convert most_popular.json -s 'struct<kind:s
 java -jar ./orc-tools-2.2.0-uber.jar convert regions.json -s 'struct<id:string,snippet:struct<name:string>,metadata:struct<retrieved_at:timestamp>>' -o regions.orc -t "yyyy-MM-dd HH:mm:ss.nX" 2>&1 | tee ./orc_regions_output.log && \
 java -jar ./orc-tools-2.2.0-uber.jar convert categories.json -s 'struct<id:string,snippet:struct<title:string,assignable:boolean>,metadata:struct<region_code:string,retrieved_at:timestamp>>' -o categories.orc -t "yyyy-MM-dd HH:mm:ss.nX" 2>&1 | tee ./orc_categories_output.log && \
 bzip2 -z --best ./backup.json 2>&1 | tee ./bzip2_output.log && \
-python3 ./upload_most_popular.py
-# && \
-# sudo shutdown -h now
+python3 ./upload_most_popular.py && \
+sudo shutdown -h now

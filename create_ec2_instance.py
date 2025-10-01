@@ -1,6 +1,7 @@
 # This is the code that goes into the AWS Lambda function.
 
 import boto3
+import datetime
 
 INIT_SCRIPT = """#!/bin/bash
 cd /home/ubuntu
@@ -15,6 +16,7 @@ su ubuntu -c "screen -dmS youtube_trends sh -c '/home/ubuntu/init_script.sh 2>&1
 
 def lambda_handler(event, context):
     ec2 = boto3.resource('ec2')
+    instance_name = f"YT {datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H')}"
     ec2.create_instances(
         ImageId='ami-0836fd4a4a0b4f6ec',
         InstanceType='t4g.nano',
@@ -35,7 +37,7 @@ def lambda_handler(event, context):
             },
         ],
         TagSpecifications=[{'ResourceType': 'instance',
-                            'Tags': [{"Key": "Name", "Value": 'youtube_trends'}]}],
+                            'Tags': [{"Key": "Name", "Value": instance_name}]}],
         IamInstanceProfile={'Name': 'youtube_trends'}
     )
     return {
