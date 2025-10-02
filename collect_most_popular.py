@@ -136,9 +136,9 @@ def read_developer_key(emergency=False):
     period = get_period()
     s3 = boto3.resource('s3')
     if emergency:
-        content_object = s3.Object('youtube-trends-uiuc-admin-v2', 'credentials_emergency.json')
+        content_object = s3.Object('youtube-trends-uiuc-admin', 'credentials_emergency.json')
     else:
-        content_object = s3.Object('youtube-trends-uiuc-admin-v2', 'credentials.json')
+        content_object = s3.Object('youtube-trends-uiuc-admin', 'credentials.json')
     file_content = content_object.get()['Body'].read().decode('utf-8')
     credentials = json.loads(file_content)
     return credentials[period]
