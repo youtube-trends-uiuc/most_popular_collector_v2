@@ -143,6 +143,21 @@ def read_developer_key(emergency=False):
     credentials = json.loads(file_content)
     return credentials[period]
 
+def get_unspecified_category(region_code):
+    unspecified_category = {
+        'kind': 'youtube#videoCategory',
+        'etag': 'NA',
+        'id': '0',
+        'snippet': {
+            'title': 'Unspecified',
+            'assignable': True,
+            'channelId': 'NA'
+        },
+        'metadata': {
+            'region_code': region_code
+        }
+    }
+    return unspecified_category
 
 def collect_most_popular():
     with open('./backup.json', 'w') as backup_json:
@@ -172,7 +187,12 @@ def collect_most_popular():
                                                                                    youtube=youtube,
                                                                                    developer_key=developer_key)
                     add_dict_to_file(backup_json, categories, retrieved_at, request_params=request_params)
+
+                    # The next two lines artificially add a "zero" category.
+                    # It corresponds to a call to videos.list(most_popular) when no category is specified.
                     category_ids = ['0', ]
+                    add_dict_to_file(categories_json, get_unspecified_category(region_code), retrieved_at)
+
                     for category in categories.get('items', []):
                         if category['snippet']['assignable']:
                             category_ids.append(category['id'])
