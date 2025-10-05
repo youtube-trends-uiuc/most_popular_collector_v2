@@ -1,3 +1,6 @@
+import ssl
+import smtplib
+from email.message import EmailMessage
 import requests
 import json
 import logging
@@ -132,6 +135,25 @@ def add_dict_to_file(file_handler, record, retrieved_at, request_params=None):
     file_handler.write(json.dumps(record) + '\n')
 
 
+def send_gmail(subject, message):
+    s3 = boto3.resource('s3')
+    content_object = s3.Object('youtube-trends-uiuc-admin', 'smtp.json')
+    file_content = content_object.get()['Body'].read().decode('utf-8')
+    smtp = json.loads(file_content)
+
+    msg = EmailMessage()
+    msg["From"] = smtp['sender']
+    msg["To"] = smtp['receiver']
+    msg["Subject"] = subject
+    msg.set_content(message)
+
+    # Gmail SMTP over SSL (port 465). Alternatively, use STARTTLS on port 587.
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
+        smtp.login(smtp['sender'], smtp['app_password'])
+        smtp.send_message(msg)
+
+
 def read_developer_key(emergency=False):
     period = get_period()
     s3 = boto3.resource('s3')
@@ -249,4 +271,8 @@ def collect_most_popular():
 
 
 if __name__ == '__main__':
-    collect_most_popular()
+    try:
+        collect_most_popular()
+    except Exception as e:
+        send_gmail('Error! Please check AWS', 'Hi, my friend!\n\nThe script collect_most_popular.py has just failed. You need to visit AWS EC2 to see what happened.\n\nAll the best,\nAdmin.')
+        raise e

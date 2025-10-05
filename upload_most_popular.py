@@ -1,6 +1,10 @@
+import ssl
+import smtplib
+from email.message import EmailMessage
 import bz2
 import shutil
 import boto3
+import json
 import os
 import subprocess
 import argparse
@@ -114,17 +118,39 @@ def upload_most_popular(creation_date, period):
         raise Exception("Backup file is too small.")
 
 
-# TODO: A system to tell us when there is an error.
+def send_gmail(subject, message):
+    s3 = boto3.resource('s3')
+    content_object = s3.Object('youtube-trends-uiuc-admin', 'smtp.json')
+    file_content = content_object.get()['Body'].read().decode('utf-8')
+    smtp = json.loads(file_content)
+
+    msg = EmailMessage()
+    msg["From"] = smtp['sender']
+    msg["To"] = smtp['receiver']
+    msg["Subject"] = subject
+    msg.set_content(message)
+
+    # Gmail SMTP over SSL (port 465). Alternatively, use STARTTLS on port 587.
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
+        smtp.login(smtp['sender'], smtp['app_password'])
+        smtp.send_message(msg)
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Upload most popular items.")
-    parser.add_argument("creation_date", nargs="?", help="YYYY-MM-DD")
-    parser.add_argument("period", nargs="?", help="00, 06, 12, 18")
-    args = parser.parse_args()
+    try:
+        parser = argparse.ArgumentParser(description="Upload most popular items.")
+        parser.add_argument("creation_date", nargs="?", help="YYYY-MM-DD")
+        parser.add_argument("period", nargs="?", help="00, 06, 12, 18")
+        args = parser.parse_args()
 
-    creation_date = args.creation_date or datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")
-    period = args.period or get_period()
+        creation_date = args.creation_date or datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")
+        period = args.period or get_period()
 
-    upload_most_popular(creation_date, period)
+        upload_most_popular(creation_date, period)
+    except Exception as e:
+        send_gmail('Error! Please check AWS', 'Hi, my friend!\n\nThe script upload_most_popular.py has just failed. You need to visit AWS EC2 to see what happened.\n\nAll the best,\nAdmin.')
+        raise e
 
 if __name__ == '__main__':
     main()
