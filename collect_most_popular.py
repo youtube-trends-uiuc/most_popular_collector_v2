@@ -213,7 +213,6 @@ def collect_most_popular():
                     # It corresponds to a call to videos.list(most_popular) when no category is specified.
                     category_ids = ['0', ]
                     add_dict_to_file(categories_json, get_unspecified_category(region_code), retrieved_at)
-                    # TODO: create a script to fix the first five periods when I didn't add the 'Unspecified' category.
 
                     for category in categories.get('items', []):
                         if category['snippet']['assignable']:
