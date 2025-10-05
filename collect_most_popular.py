@@ -147,7 +147,6 @@ def send_gmail(subject, message):
     msg["Subject"] = subject
     msg.set_content(message)
 
-    # Gmail SMTP over SSL (port 465). Alternatively, use STARTTLS on port 587.
     context = ssl.create_default_context()
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
         smtp.login(smtp['sender'], smtp['app_password'])
@@ -274,5 +273,5 @@ if __name__ == '__main__':
     try:
         collect_most_popular()
     except Exception as e:
-        send_gmail('Error! Please check AWS', 'Hi, my friend!\n\nThe script collect_most_popular.py has just failed. You need to visit AWS EC2 to see what happened.\n\nAll the best,\nAdmin.')
+        send_gmail('Error! Please check AWS', f'Hi, my friend!\n\nThe script collect_most_popular.py has just failed with this error:\n\n{str(e)}\n\nYou need to visit AWS EC2 to see what happened.\n\nAll the best,\nAdmin.')
         raise e

@@ -1,14 +1,11 @@
-import ssl
-import smtplib
-from email.message import EmailMessage
 import bz2
 import shutil
 import boto3
-import json
 import os
 import subprocess
 import argparse
 import datetime
+from collect_most_popular import send_gmail
 
 def get_period():
     period = int(datetime.datetime.now(datetime.UTC).strftime("%H"))
@@ -118,25 +115,6 @@ def upload_most_popular(creation_date, period):
         raise Exception("Backup file is too small.")
 
 
-def send_gmail(subject, message):
-    s3 = boto3.resource('s3')
-    content_object = s3.Object('youtube-trends-uiuc-admin', 'smtp.json')
-    file_content = content_object.get()['Body'].read().decode('utf-8')
-    smtp = json.loads(file_content)
-
-    msg = EmailMessage()
-    msg["From"] = smtp['sender']
-    msg["To"] = smtp['receiver']
-    msg["Subject"] = subject
-    msg.set_content(message)
-
-    # Gmail SMTP over SSL (port 465). Alternatively, use STARTTLS on port 587.
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
-        smtp.login(smtp['sender'], smtp['app_password'])
-        smtp.send_message(msg)
-
-
 def main():
     try:
         parser = argparse.ArgumentParser(description="Upload most popular items.")
@@ -149,7 +127,7 @@ def main():
 
         upload_most_popular(creation_date, period)
     except Exception as e:
-        send_gmail('Error! Please check AWS', 'Hi, my friend!\n\nThe script upload_most_popular.py has just failed. You need to visit AWS EC2 to see what happened.\n\nAll the best,\nAdmin.')
+        send_gmail('Error! Please check AWS', f'Hi, my friend!\n\nThe script upload_most_popular.py has just failed with this error:\n\n{str(e)}\n\nYou need to visit AWS EC2 to see what happened.\n\nAll the best,\nAdmin.')
         raise e
 
 if __name__ == '__main__':
