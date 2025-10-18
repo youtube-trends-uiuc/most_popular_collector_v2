@@ -16,6 +16,7 @@ import boto3
 WAIT_WHEN_SERVICE_UNAVAILABLE = 30
 WAIT_WHEN_CONNECTION_RESET_BY_PEER = 60
 WAIT_WHEN_UNKNOWN_ERROR = 180
+WAIT_LONGER_WHEN_UNKNOWN_ERROR = 600
 
 
 def get_youtube_client(developer_key):
@@ -108,8 +109,10 @@ def get_response_from_youtube(response_type, request_params, youtube=None, devel
         except Exception as e:
             logging.error(e)
             unknown_error += 1
-            if unknown_error <= 3:
+            if unknown_error <= 5:
                 time.sleep(WAIT_WHEN_UNKNOWN_ERROR)
+            elif unknown_error <= 15:
+                time.sleep(WAIT_LONGER_WHEN_UNKNOWN_ERROR)
             else:
                 raise
     return response, youtube, developer_key
@@ -139,17 +142,17 @@ def send_gmail(subject, message):
     s3 = boto3.resource('s3')
     content_object = s3.Object('youtube-trends-uiuc-admin', 'smtp.json')
     file_content = content_object.get()['Body'].read().decode('utf-8')
-    smtp = json.loads(file_content)
+    smtp_credentials = json.loads(file_content)
 
     msg = EmailMessage()
-    msg["From"] = smtp['sender']
-    msg["To"] = smtp['receiver']
+    msg["From"] = smtp_credentials['sender']
+    msg["To"] = smtp_credentials['receiver']
     msg["Subject"] = subject
     msg.set_content(message)
 
     context = ssl.create_default_context()
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
-        smtp.login(smtp['sender'], smtp['app_password'])
+        smtp.login(smtp_credentials['sender'], smtp_credentials['app_password'])
         smtp.send_message(msg)
 
 
