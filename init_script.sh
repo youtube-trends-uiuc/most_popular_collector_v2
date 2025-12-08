@@ -15,6 +15,8 @@ wget https://raw.githubusercontent.com/youtube-trends-uiuc/most_popular_collecto
 python3 -m venv ./venv
 source ./venv/bin/activate
 pip3 install --trusted-host pypi.python.org -r ./requirements.txt
+# make sure it will not erase the instance if one of the scripts fail
+set -euo pipefail
 # where to find how to format the timestamp in orc-tools: https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html
 python3 ./collect_most_popular.py 2>&1 | tee ./collect_most_popular.log && \
 python3 ./upload_most_popular.py 2>&1 | tee ./upload_most_popular.log && \
