@@ -271,9 +271,33 @@ def collect_most_popular():
                                 more_pages = False
 
 
+def count_running_instances():
+    ec2 = boto3.client('ec2')
+    paginator = ec2.get_paginator('describe_instances')
+    count = 0
+    for page in paginator.paginate(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}]):
+        for r in page.get('Reservations', []):
+            count += len(r.get('Instances', []))
+    return count
+
+MAX_EC2_INSTANCES_RUNNING = 10
+
+def start_new_instance():
+    try:
+        if count_running_instances() < MAX_EC2_INSTANCES_RUNNING:
+            boto3.client('lambda').invoke(
+                FunctionName='create_ec2_instance',
+                InvocationType='Event',
+                Payload=b'{}'
+            )
+    except Exception:
+        print("Error while trying to start a new instance.")
+
+
 if __name__ == '__main__':
     try:
         collect_most_popular()
     except Exception as e:
         send_gmail('Error! Please check AWS', f'Hi, my friend!\n\nThe script collect_most_popular.py has just failed with this error:\n\n{str(e)}\n\nYou need to visit AWS EC2 to see what happened.\n\nAll the best,\nAdmin.')
+        start_new_instance()
         raise e
