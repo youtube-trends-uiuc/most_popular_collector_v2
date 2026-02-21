@@ -1,4 +1,5 @@
 #!/bin/bash
+# make sure it will not erase the instance if one of the scripts fail
 sudo timedatectl set-timezone UTC
 # add swap in case memory is too short.
 sudo fallocate -l 1G /swapfile
@@ -6,17 +7,41 @@ sudo chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
 # install packages.
+set -euo pipefail
 sudo apt-get install -y python3-pip python3-venv default-jre
 cd /home/ubuntu
-wget https://repo1.maven.org/maven2/org/apache/orc/orc-tools/2.2.0/orc-tools-2.2.0-uber.jar
-wget https://raw.githubusercontent.com/youtube-trends-uiuc/most_popular_collector_v2/refs/heads/main/collect_most_popular.py
-wget https://raw.githubusercontent.com/youtube-trends-uiuc/most_popular_collector_v2/refs/heads/main/requirements.txt
-wget https://raw.githubusercontent.com/youtube-trends-uiuc/most_popular_collector_v2/refs/heads/main/upload_most_popular.py
+wget -nv --tries=12 --waitretry=10 --retry-connrefused -c https://repo1.maven.org/maven2/org/apache/orc/orc-tools/2.2.0/orc-tools-2.2.0-uber.jar
+wget -nv --tries=12 --waitretry=10 --retry-connrefused -c https://raw.githubusercontent.com/youtube-trends-uiuc/most_popular_collector_v2/refs/heads/main/collect_most_popular.py
+wget -nv --tries=12 --waitretry=10 --retry-connrefused -c https://raw.githubusercontent.com/youtube-trends-uiuc/most_popular_collector_v2/refs/heads/main/requirements.txt
+wget -nv --tries=12 --waitretry=10 --retry-connrefused -c https://raw.githubusercontent.com/youtube-trends-uiuc/most_popular_collector_v2/refs/heads/main/upload_most_popular.py
 python3 -m venv ./venv
 source ./venv/bin/activate
-pip3 install --trusted-host pypi.python.org -r ./requirements.txt
-# make sure it will not erase the instance if one of the scripts fail
-set -euo pipefail
+
+# Maximum number of attempts
+MAX_RETRIES=12
+RETRY_COUNT=0
+SUCCESS=false
+
+echo "Starting installation of Python requirements..."
+
+until [ $RETRY_COUNT -ge $MAX_RETRIES ]
+do
+    # We use '||' so the script doesn't exit immediately due to 'set -e'
+    if pip3 install --default-timeout=100 --trusted-host pypi.python.org -r ./requirements.txt; then
+        SUCCESS=true
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "Pip failed. Attempt $RETRY_COUNT/$MAX_RETRIES. Retrying in 10 seconds..."
+        sleep 10
+    fi
+done
+
+if [ "$SUCCESS" = false ]; then
+    echo "Failed to install requirements after $MAX_RETRIES attempts. Exiting."
+    exit 1
+fi
+
 # where to find how to format the timestamp in orc-tools: https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html
 python3 ./collect_most_popular.py 2>&1 | tee ./collect_most_popular.log && \
 python3 ./upload_most_popular.py 2>&1 | tee ./upload_most_popular.log && \
