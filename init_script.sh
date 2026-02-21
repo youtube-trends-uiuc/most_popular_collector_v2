@@ -1,13 +1,13 @@
 #!/bin/bash
-# make sure it will not erase the instance if one of the scripts fail
 sudo timedatectl set-timezone UTC
 # add swap in case memory is too short.
 sudo fallocate -l 1G /swapfile
 sudo chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
-# install packages.
+# make sure it will not erase the instance if one of the scripts fail
 set -euo pipefail
+# install packages.
 sudo apt-get install -y python3-pip python3-venv default-jre
 cd /home/ubuntu
 wget -nv --tries=12 --waitretry=10 --retry-connrefused -c https://repo1.maven.org/maven2/org/apache/orc/orc-tools/2.2.0/orc-tools-2.2.0-uber.jar
