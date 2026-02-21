@@ -5,8 +5,6 @@ sudo fallocate -l 1G /swapfile
 sudo chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
-# make sure it will not erase the instance if one of the scripts fail
-set -euo pipefail
 # install packages.
 for i in {1..12}; do
     echo "Attempt $i: Updating and installing packages..."
@@ -44,10 +42,11 @@ do
 done
 
 if [ "$SUCCESS" = false ]; then
-    echo "Failed to install requirements after $MAX_RETRIES attempts. Exiting."
-    exit 1
+    echo "Failed to install requirements after $MAX_RETRIES attempts."
 fi
 
+# make sure it will not erase the instance if one of the scripts fail
+set -euo pipefail
 # where to find how to format the timestamp in orc-tools: https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html
 python3 ./collect_most_popular.py 2>&1 | tee ./collect_most_popular.log && \
 python3 ./upload_most_popular.py 2>&1 | tee ./upload_most_popular.log && \
