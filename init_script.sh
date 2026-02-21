@@ -8,8 +8,13 @@ sudo swapon /swapfile
 # make sure it will not erase the instance if one of the scripts fail
 set -euo pipefail
 # install packages.
-sudo apt-get update
-sudo apt-get install -y python3-full default-jre
+for i in {1..12}; do
+    echo "Attempt $i: Updating and installing packages..."
+    sudo apt-get update && \
+    sudo apt-get install -y -o Acquire::Retries=3 python3-full default-jre && \
+    break || \
+    echo "Attempt $i failed. Retrying in 5 seconds..." && sleep 10
+done
 cd /home/ubuntu
 wget -nv --tries=12 --waitretry=10 --retry-connrefused -c https://repo1.maven.org/maven2/org/apache/orc/orc-tools/2.2.0/orc-tools-2.2.0-uber.jar
 wget -nv --tries=12 --waitretry=10 --retry-connrefused -c https://raw.githubusercontent.com/youtube-trends-uiuc/most_popular_collector_v2/refs/heads/main/collect_most_popular.py
