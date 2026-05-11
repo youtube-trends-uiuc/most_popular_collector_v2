@@ -25,7 +25,7 @@ STRUCT_CATEGORIES = 'struct<id:string,snippet:struct<title:string,assignable:boo
 def convert_to_orc(file, struct, min_size = 0):
     # Build the command as a list to avoid shell-quoting issues on any OS
     cmd = [
-        "java", "-jar", "./orc-tools-2.2.0-uber.jar",
+        "java", "-jar", "./orc-tools-uber.jar",
         "convert", f"./{file}.json",
         "-s", struct,
         "-o", f"./{file}.orc",
